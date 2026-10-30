@@ -28,6 +28,16 @@ npx vitest run -t "テスト名の一部"            # テスト名で絞り込�
 - **Tailwind CSS v4 を Turbopack ローダー経由で処理**（`next.config.ts` の `turbopack.rules` で `*.css` に `@tailwindcss/turbopack` を適用）。PostCSS 設定ファイルは存在しない。テーマトークン（`--color-background` 等）は `src/app/globals.css` の `@theme inline` で定義。
 - `layout.tsx` などで使う `LayoutProps<"/">` / `PageProps` はグローバル型ヘルパー（Next.js が `.next/types` に生成）で、import 不要。
 
+## Supabase
+
+- プロジェクト: `task-kanban`（project ref `cosamtpchnabbyoycxqj`）。テーブル構成やキーは Supabase MCP（`list_tables` / `get_publishable_keys` 等）で確認する。
+- 環境変数は `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` の2つ（キー一覧は `.env.example`、実値は git 管理外の `.env.local`）。旧来の `ANON_KEY` ではなく publishable key（`sb_publishable_...`）を使う。値の読み込みは `src/lib/supabase/env.ts` に集約しており、`process.env` を直接読まない。
+- パッケージは `@supabase/supabase-js` + `@supabase/ssr`。クライアントは用途で使い分ける:
+  - Client Component → `src/lib/supabase/client.ts` の `createClient()`（同期）
+  - Server Component / Server Action / Route Handler → `src/lib/supabase/server.ts` の `createClient()`（`async`。`cookies()` を使うため `await` が必要で、リクエストごとに生成する。モジュールスコープで使い回さない）
+- サーバー起動時の接続確認は `src/instrumentation.ts`（Next.js の `register()`、Node.js ランタイムのみ）で `checkSupabaseConnection()`（`src/lib/supabase/checkConnection.ts`）を呼ぶ。Auth の `/auth/v1/health` への疎通確認で、失敗時のみ `console.error` を出す。成功時はログを出さない。
+- 接続確認のテストでは `fetch` を `vi.stubGlobal`、環境変数を `vi.stubEnv` でモックし、`afterEach` で必ず `unstubAll*` する。
+
 ## テスト
 
 - Vitest + React Testing Library、環境は jsdom（`vitest.config.mts`）。`@/` エイリアスは Vite ネイティブの `resolve.tsconfigPaths: true` で解決しており、`vite-tsconfig-paths` プラグインは不要。
